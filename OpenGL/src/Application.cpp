@@ -7,64 +7,40 @@ const char* APP_TITLE = "Introduction to Modern OpenGL - Hello Window 1";
 const int gWindowWidth = 800;
 const int gWindowHeight = 600;
 bool gFullScreen = false;
+GLFWwindow* gWindow = NULL;
 
 void glfw_onKey(GLFWwindow* window, int key, int scancode, int action, int mode);
 void showFPS(GLFWwindow* window);
+bool initOpenGL();
 int main(void)
 {
-	GLFWwindow* pWindow = NULL;
-
-	/* Initialize the library */
-	if (!glfwInit())
-		return -1;
-
-	// Set min OpenGL Version
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	// Force to create modern core profile
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-	if (gFullScreen)
+	if (!initOpenGL())
 	{
-		GLFWmonitor* pMonitor = glfwGetPrimaryMonitor();
-		const GLFWvidmode* pVmode = glfwGetVideoMode(pMonitor);
-		if (pVmode) 
-		{
-			pWindow = glfwCreateWindow(pVmode->width, pVmode->height, APP_TITLE, pMonitor, NULL);
-		}
-	}
-	else
-	{
-		/* Create a windowed mode window and its OpenGL context */
-		pWindow = glfwCreateWindow(gWindowWidth, gWindowHeight, APP_TITLE, NULL, NULL);
-
-	}
-
-	if (!pWindow)
-	{
-		glfwTerminate();
+		std::cerr << "GLFW initalization failed" << std::endl;
 		return -1;
 	}
 
-	/* Make the window's context current */
-	glfwMakeContextCurrent(pWindow);
+	GLfloat vertices[] = {
+		0.0f,  0.5f, 0.0f, // Top
+		0.5f, -0.5f, 0.0f, // Right
+		-0.5f, -0.5f, 0.0f // Left
+	};
 
-	glfwSetKeyCallback(pWindow, glfw_onKey);
-
-	glewExperimental = GL_TRUE;
-	// Initialize glew after window context
-	if (glewInit() != GLEW_OK)
-	{
-		std::cout << "Error!" << std::endl;
-		return -1;
-	}
+	// Vertex buffer object
+	GLuint vbo;
+	// Create memory in the graphics card
+	glGenBuffers(1, &vbo);
+	// Makes buffer the current one. Only one at a time.
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	// Fill buffer with data from vertices
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
 	std::cout << glGetString(GL_VERSION) << std::endl;
 
 	/* Loop until the user closes the window */
-	while (!glfwWindowShouldClose(pWindow))
+	while (!glfwWindowShouldClose(gWindow))
 	{
-		showFPS(pWindow);
+		showFPS(gWindow);
 		/* Render here */
 		glClearColor(0.23f, 0.38f, 0.47f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -76,7 +52,7 @@ int main(void)
 		//glEnd();
 
 		/* Swap front and back buffers. Front is being displayed, back is currently being drawn */
-		glfwSwapBuffers(pWindow);
+		glfwSwapBuffers(gWindow);
 
 		/* Poll for and process kb/m events */
 		glfwPollEvents();
@@ -84,6 +60,57 @@ int main(void)
 
 	glfwTerminate();
 	return 0;
+}
+
+bool initOpenGL()
+{
+
+	/* Initialize the library */
+	if (!glfwInit())
+		return false;
+
+	// Set min OpenGL Version
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	// Force to create modern core profile
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+	if (gFullScreen)
+	{
+		GLFWmonitor* pMonitor = glfwGetPrimaryMonitor();
+		const GLFWvidmode* pVmode = glfwGetVideoMode(pMonitor);
+		if (pVmode)
+		{
+			gWindow = glfwCreateWindow(pVmode->width, pVmode->height, APP_TITLE, pMonitor, NULL);
+		}
+	}
+	else
+	{
+		/* Create a windowed mode window and its OpenGL context */
+		gWindow = glfwCreateWindow(gWindowWidth, gWindowHeight, APP_TITLE, NULL, NULL);
+
+	}
+
+	if (!gWindow)
+	{
+		glfwTerminate();
+		return false;
+	}
+
+	/* Make the window's context current */
+	glfwMakeContextCurrent(gWindow);
+
+	glfwSetKeyCallback(gWindow, glfw_onKey);
+
+	glewExperimental = GL_TRUE;
+	// Initialize glew after window context
+	if (glewInit() != GLEW_OK)
+	{
+		std::cout << "Error!" << std::endl;
+		return false;
+	}
+
+	return true;
 }
 
 void glfw_onKey(GLFWwindow* window, int key, int scancode, int action, int mode)
