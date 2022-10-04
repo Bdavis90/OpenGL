@@ -3,7 +3,7 @@
 #include <GLFW/glfw3.h>
 #include <sstream>
 
-const char* APP_TITLE = "Introduction to Modern OpenGL - Hello Window 1";
+const char* APP_TITLE = "Introduction to Modern OpenGL - Hello Triangle";
 const int gWindowWidth = 800;
 const int gWindowHeight = 600;
 bool gFullScreen = false;
@@ -28,14 +28,23 @@ int main(void)
 
 	// Vertex buffer object
 	GLuint vbo;
+
+	// Vertex array object
+	GLuint vao;
 	// Create memory in the graphics card
 	glGenBuffers(1, &vbo);
 	// Makes buffer the current one. Only one at a time.
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	// Fill buffer with data from vertices
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	// Fill buffer with data from vertices. Static Draw: The data store contents will be modified once and used many times.
+	glBufferData(GL_ARRAY_BUFFER, 9 * sizeof(GLfloat), vertices, GL_STATIC_DRAW);
 
-	std::cout << glGetString(GL_VERSION) << std::endl;
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
+	//stride: amount of bytes between each vertex. pointer: amount of bytes between attribute
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GL_FLOAT) * 3, 0);
+	glEnableVertexAttribArray(0);
+
+	const GLchar* vertexShaderSrc = "#version 330 core\n" "layout (location = 0) in vec3 pos;";
 
 	/* Loop until the user closes the window */
 	while (!glfwWindowShouldClose(gWindow))
@@ -45,11 +54,10 @@ int main(void)
 		glClearColor(0.23f, 0.38f, 0.47f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		//glBegin(GL_TRIANGLES);
-		//glVertex2f(-0.5f, -0.5f);
-		//glVertex2f(0.0f, 0.5f);
-		//glVertex2f(0.5f, -0.5f);
-		//glEnd();
+		glBindVertexArray(vao);
+		glDrawArrays(GL_TRIANGLES, 0, 3);
+		glBindVertexArray(0);
+
 
 		/* Swap front and back buffers. Front is being displayed, back is currently being drawn */
 		glfwSwapBuffers(gWindow);
@@ -70,7 +78,7 @@ bool initOpenGL()
 		return false;
 
 	// Set min OpenGL Version
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	// Force to create modern core profile
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -81,6 +89,7 @@ bool initOpenGL()
 		const GLFWvidmode* pVmode = glfwGetVideoMode(pMonitor);
 		if (pVmode)
 		{
+			/* Create a fullscreen mode window and its OpenGL context */
 			gWindow = glfwCreateWindow(pVmode->width, pVmode->height, APP_TITLE, pMonitor, NULL);
 		}
 	}
@@ -93,6 +102,7 @@ bool initOpenGL()
 
 	if (!gWindow)
 	{
+		std::cerr << "Failed to created GLFW window" << std::endl;
 		glfwTerminate();
 		return false;
 	}
@@ -100,7 +110,8 @@ bool initOpenGL()
 	/* Make the window's context current */
 	glfwMakeContextCurrent(gWindow);
 
-	glfwSetKeyCallback(gWindow, glfw_onKey);
+	// Handles keyboard inputs 
+	auto a = glfwSetKeyCallback(gWindow, glfw_onKey);
 
 	glewExperimental = GL_TRUE;
 	// Initialize glew after window context
