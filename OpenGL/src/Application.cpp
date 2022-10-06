@@ -9,6 +9,7 @@ const int gWindowHeight = 600;
 bool gFullScreen = false;
 GLFWwindow* gWindow = NULL;
 
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void glfw_onKey(GLFWwindow* window, int key, int scancode, int action, int mode);
 void showFPS(GLFWwindow* window);
 bool initOpenGL();
@@ -47,7 +48,7 @@ int main(void)
 
 #pragma region Interleaved Buffer Layout
 
-#if 0
+#if 1
 
 	GLfloat vertices[] = {
 		// position			// color
@@ -137,13 +138,12 @@ int main(void)
 
 #pragma endregion
 
-#pragma region Quad
-#if 1
+#pragma region Element Buffer Layout
+#if 0
 	const GLchar* vertexShaderSrc =
 		// what shader model to use
 		"#version 330 core\n"
 		"layout (location = 0) in vec3 pos;"
-		"out vec3 vert_color;"
 		"void main()"
 		"{"
 		"	gl_Position = vec4(pos.x, pos.y, pos.z, 1.0);"
@@ -157,20 +157,19 @@ int main(void)
 		"	frag_color = vec4(.35f, .96f, .3f, 1.0f);"
 		"}";
 
-	GLfloat vert_pos[] = {
-	// tri 0
-	-0.5f, 0.5f, 0.0f,
-	0.5f, 0.5f, 0.0f,
-	0.5f,  -0.5f, 0.0f,
-
-	// tri 1
-	-0.5f, 0.5f, 0.0f,
-	0.5f, -0.5f, 0.0f,
-	-0.5f,  -0.5f, 0.0f,
+	GLfloat vertices[] = {
+		 0.5f,  0.5f, 0.0f,  // top right
+		 0.5f, -0.5f, 0.0f,  // bottom right
+		-0.5f, -0.5f, 0.0f,  // bottom left
+		-0.5f,  0.5f, 0.0f   // top left 
+	};
+	GLuint indices[] = {  // note that we start from 0!
+		0, 1, 3,   // first triangle
+		1, 2, 3    // second triangle
 	};
 
 	// Vertex buffer object
-	GLuint vbo, vbo2;
+	GLuint vbo, ebo;
 
 	// Vertex array object
 	GLuint vao;
@@ -179,10 +178,17 @@ int main(void)
 	// Makes buffer the current one. Only one at a time.
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	// Fill buffer with data from vert_pos. Static Draw: The data store contents will be modified once and used many times.
-	glBufferData(GL_ARRAY_BUFFER, 18 * sizeof(GLfloat), vert_pos, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(GLfloat), vertices, GL_STATIC_DRAW);
 
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
+
+	// Create memory in the graphics card
+	glGenBuffers(1, &ebo);
+	// Makes buffer the current one. Only one at a time.
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+	// Fill buffer with data from vert_pos. Static Draw: The data store contents will be modified once and used many times.
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(GLuint), indices, GL_STATIC_DRAW);
 
 
 	//stride: amount of bytes between each vertex. pointer: amount of bytes between attribute
@@ -193,6 +199,41 @@ int main(void)
 
 #pragma endregion
 
+#pragma region Index Buffer
+#if 0
+	float vertices[] = {
+		// first triangle
+		-0.9f, -0.5f, 0.0f,  // left 
+		-0.0f, -0.5f, 0.0f,  // right
+		-0.45f, 0.5f, 0.0f,  // top 
+		// second triangle
+		 0.0f, -0.5f, 0.0f,  // left
+		 0.9f, -0.5f, 0.0f,  // right
+		 0.45f, 0.5f, 0.0f   // top 
+	};
+
+	unsigned int vbo, vao;
+	glGenVertexArrays(1, &vao);
+	glGenBuffers(1, &vbo);
+	// bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
+	glBindVertexArray(vao);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	// note that this is allowed, the call to glVertexAttribPointer registered vbo as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	// You can unbind the vao afterwards so other vao calls won't accidentally modify this vao, but this rarely happens. Modifying other
+	// vaos requires a call to glBindVertexArray anyways so we generally don't unbind vaos (nor VBOs) when it's not directly necessary.
+	glBindVertexArray(0);
+
+#endif // 0
+
+#pragma endregion
 
 	//Create vertex shader
 	GLuint vs = glCreateShader(GL_VERTEX_SHADER);
@@ -253,6 +294,7 @@ int main(void)
 		glUseProgram(shaderProgram);
 
 		glBindVertexArray(vao);
+		//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 		glBindVertexArray(0);
 
@@ -269,6 +311,7 @@ int main(void)
 	glDeleteProgram(shaderProgram);
 	glDeleteVertexArrays(1, &vao);
 	glDeleteBuffers(1, &vbo);
+	//glDeleteBuffers(1, &ebo);
 
 	glfwTerminate();
 	return 0;
@@ -306,16 +349,19 @@ bool initOpenGL()
 
 	if (!gWindow)
 	{
-		std::cerr << "Failed to created GLFW window" << std::endl;
+		std::cerr << "Failed to create GLFW window" << std::endl;
 		glfwTerminate();
 		return false;
 	}
 
 	/* Make the window's context current */
 	glfwMakeContextCurrent(gWindow);
+	// Turn off vsync
+	glfwSwapInterval(0);
 
 	// Handles keyboard inputs 
-	auto a = glfwSetKeyCallback(gWindow, glfw_onKey);
+	glfwSetKeyCallback(gWindow, glfw_onKey);
+	glfwSetFramebufferSizeCallback(gWindow, framebuffer_size_callback);
 
 	glewExperimental = GL_TRUE;
 	// Initialize glew after window context
@@ -377,4 +423,11 @@ void showFPS(GLFWwindow* window)
 	}
 
 	frameCount++;
+}
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+	// make sure the viewport matches the new window dimensions; note that width and 
+	// height will be significantly larger than specified on retina displays.
+	glViewport(0, 0, width, height);
 }
