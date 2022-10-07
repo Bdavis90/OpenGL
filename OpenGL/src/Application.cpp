@@ -2,13 +2,51 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <sstream>
-
-const char* APP_TITLE = "Introduction to Modern OpenGL - Hello Triangle";
+#include <fstream>
+#include <string>
+const char* APP_TITLE = "Introduction to Modern OpenGL - Hello Shader";
 const int gWindowWidth = 800;
 const int gWindowHeight = 600;
 bool gFullScreen = false;
 GLFWwindow* gWindow = NULL;
 
+struct ShaderProgramSource
+{
+	std::string VertextSource;
+	std::string FragmentSource;
+};
+
+static ShaderProgramSource ParseShader(const std::string& filepath)
+{
+	enum class ShaderType
+	{
+		NONE = -1,
+		VERTEX = 0,
+		FRAGMENT = 1
+	};
+
+	std::ifstream stream(filepath);
+	std::string line;
+	std::stringstream ss[2];
+	ShaderType type = ShaderType::NONE;
+
+	while (getline(stream, line))
+	{
+		if (line.find("#shader") != std::string::npos)
+		{
+			if (line.find("vertex") != std::string::npos)
+				type = ShaderType::VERTEX;
+			else if (line.find("fragment") != std::string::npos)
+				type = ShaderType::FRAGMENT;
+		}
+		else
+		{
+			ss[(int)type] << line << '\n';
+		}
+	}
+
+	return { ss[0].str(), ss[1].str() };
+}
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void glfw_onKey(GLFWwindow* window, int key, int scancode, int action, int mode);
 void showFPS(GLFWwindow* window);
@@ -36,7 +74,6 @@ const GLchar* fragmentShaderSrc =
 "	frag_color = vec4(vert_color, 1.0f);"
 "}";
 
-
 int main(void)
 {
 	if (!initOpenGL())
@@ -60,8 +97,6 @@ int main(void)
 	// Vertex buffer object
 	GLuint vbo;
 
-	// Vertex array object
-	GLuint vao;
 	// Create memory in the graphics card
 	glGenBuffers(1, &vbo);
 	// Makes buffer the current one. Only one at a time.
@@ -69,6 +104,8 @@ int main(void)
 	// Fill buffer with data from vert_pos. Static Draw: The data store contents will be modified once and used many times.
 	glBufferData(GL_ARRAY_BUFFER, 18 * sizeof(GLfloat), vertices, GL_STATIC_DRAW);
 
+	// Vertex array object
+	GLuint vao;
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
@@ -138,7 +175,7 @@ int main(void)
 
 #pragma endregion
 
-#pragma region Element Buffer Layout
+#pragma region Element/Index Buffer Layout
 #if 0
 	const GLchar* vertexShaderSrc =
 		// what shader model to use
@@ -199,7 +236,7 @@ int main(void)
 
 #pragma endregion
 
-#pragma region Index Buffer
+#pragma region Side by side Triangle
 #if 0
 	float vertices[] = {
 		// first triangle
@@ -295,7 +332,7 @@ int main(void)
 
 		glBindVertexArray(vao);
 		//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glDrawArrays(GL_TRIANGLES, 0, 3);
 		glBindVertexArray(0);
 
 
