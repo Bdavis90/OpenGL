@@ -10,6 +10,12 @@ const int gWindowHeight = 600;
 bool gFullScreen = false;
 GLFWwindow* gWindow = NULL;
 
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void glfw_onKey(GLFWwindow* window, int key, int scancode, int action, int mode);
+void showFPS(GLFWwindow* window);
+bool initOpenGL();
+bool gWireframe = false;
+
 struct ShaderProgramSource
 {
 	std::string VertextSource;
@@ -47,32 +53,69 @@ static ShaderProgramSource ParseShader(const std::string& filepath)
 
 	return { ss[0].str(), ss[1].str() };
 }
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void glfw_onKey(GLFWwindow* window, int key, int scancode, int action, int mode);
-void showFPS(GLFWwindow* window);
-bool initOpenGL();
-bool gWireframe = false;
 
-const GLchar* vertexShaderSrc =
-// what shader model to use
-"#version 330 core\n"
-"layout (location = 0) in vec3 pos;"
-"layout (location = 1) in vec3 color;"
-"out vec3 vert_color;"
-"void main()"
-"{"
-"	vert_color = color;"
-"	gl_Position = vec4(pos.x, pos.y, pos.z, 1.0);"
-"}";
+static GLuint CompileShader(GLuint type, const std::string& source)
+{
+	//Create vertex shader
+	GLuint id = glCreateShader(type);
+	const GLchar* src = source.c_str();
+	// use our vertex shader source code
+	glShaderSource(id, 1, &src, nullptr);
+	// compile our vertex shader
+	glCompileShader(id);
 
-const GLchar* fragmentShaderSrc =
-"#version 330 core\n"
-"in vec3 vert_color;"
-"out vec4 frag_color;"
-"void main()"
-"{"
-"	frag_color = vec4(vert_color, 1.0f);"
-"}";
+	GLint result;
+	glGetShaderiv(id, GL_COMPILE_STATUS, &result);
+	if (!result)
+	{
+		GLint length = 0;
+		glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length);
+		// allocate on stack
+		GLchar* infoLog = (GLchar*)alloca(length * sizeof(GLchar));
+		glGetShaderInfoLog(id, length, &length, infoLog);
+		std::cerr << "Error! Failed to compile "
+			<< (type == GL_VERTEX_SHADER ? "vertex " : "fragment ")
+			<< "shader." << std::endl;
+			std::cerr << infoLog << std::endl;
+
+		glDeleteShader(id);
+		return 0;
+	}
+
+	return id;
+}
+
+static GLuint CreateShader(const std::string& vertexShader, const std::string& fragmentShader)
+{
+	// Create program for our shader
+	GLuint program = glCreateProgram();
+	GLuint vs = CompileShader(GL_VERTEX_SHADER, vertexShader);
+	GLuint fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
+
+	// Attach our shaders to the program
+	glAttachShader(program, vs);
+	glAttachShader(program, fs);
+	glLinkProgram(program);
+	glValidateProgram(program);
+
+	GLint result;
+	glGetProgramiv(program, GL_LINK_STATUS, &result);
+	if (!result)
+	{
+		GLint length = 0;
+		// allocate on stack
+		GLchar* infoLog = (GLchar*)alloca(length * sizeof(GLchar));
+		glGetProgramInfoLog(program, sizeof(infoLog), NULL, infoLog);
+		std::cerr << "Error! Shader Program linker failed. " << infoLog << std::endl;
+	}
+
+	// Delete already linked shaders
+	glDeleteShader(vs);
+	glDeleteShader(fs);
+
+	return program;
+
+}
 
 int main(void)
 {
@@ -272,53 +315,9 @@ int main(void)
 
 #pragma endregion
 
-	//Create vertex shader
-	GLuint vs = glCreateShader(GL_VERTEX_SHADER);
-	// use our vertex shader source code
-	glShaderSource(vs, 1, &vertexShaderSrc, NULL);
-	// compile our vertex shader
-	glCompileShader(vs);
+	ShaderProgramSource source = ParseShader("res/shaders/Basic.shader");
+	GLuint shaderProgram = CreateShader(source.VertextSource, source.FragmentSource);
 
-	GLint result;
-	GLchar infoLog[512];
-	glGetShaderiv(vs, GL_COMPILE_STATUS, &result);
-	if (!result)
-	{
-		glGetShaderInfoLog(vs, sizeof(infoLog), NULL, infoLog);
-		std::cerr << "Error! Vertex shader failed to compile. " << infoLog << std::endl;
-	}
-
-	//Create fragment shader
-	GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
-	// use our fragment shader source code
-	glShaderSource(fs, 1, &fragmentShaderSrc, NULL);
-	// compile our fragment shader
-	glCompileShader(fs);
-
-	glGetShaderiv(fs, GL_COMPILE_STATUS, &result);
-	if (!result)
-	{
-		glGetShaderInfoLog(fs, sizeof(infoLog), NULL, infoLog);
-		std::cerr << "Error! Fragment shader failed to compile. " << infoLog << std::endl;
-	}
-
-	// Create program for our shader
-	GLuint shaderProgram = glCreateProgram();
-	// Attach our shaders to the program
-	glAttachShader(shaderProgram, vs);
-	glAttachShader(shaderProgram, fs);
-	glLinkProgram(shaderProgram);
-
-	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &result);
-	if (!result)
-	{
-		glGetProgramInfoLog(shaderProgram, sizeof(infoLog), NULL, infoLog);
-		std::cerr << "Error! Shader Program linker failed. " << infoLog << std::endl;
-	}
-
-	// Delete already linked shaders
-	glDeleteShader(vs);
-	glDeleteShader(fs);
 
 	/* Loop until the user closes the window */
 	while (!glfwWindowShouldClose(gWindow))
