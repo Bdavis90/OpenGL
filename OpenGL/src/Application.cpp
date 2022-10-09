@@ -4,6 +4,34 @@
 #include <sstream>
 #include <fstream>
 #include <string>
+
+#define ASSERT(x) if (!(x)) __debugbreak();
+#ifdef DEBUG
+	#define GLCall(x) GLClearError();\
+	x;\
+	ASSERT(GLLogCall(#x, __FILE__, __LINE__))
+#else
+	#define GLCall(x) x
+#endif // DEBUG
+
+static void GLClearError()
+{
+	while (!glGetError());
+}
+ 
+static bool GLLogCall(const char* function, const char* file, int line)
+{
+	while (GLenum error = glGetError())
+	{
+		std::cout << "[OpenGL Error] (" << error << ")" << function <<
+			" " << file << ":" << line << std::endl;
+		return false;
+	}
+
+	return true;
+}
+
+
 const char* APP_TITLE = "Introduction to Modern OpenGL - Hello Shader";
 const int gWindowWidth = 800;
 const int gWindowHeight = 600;
@@ -57,12 +85,12 @@ static ShaderProgramSource ParseShader(const std::string& filepath)
 static GLuint CompileShader(GLuint type, const std::string& source)
 {
 	//Create vertex shader
-	GLuint id = glCreateShader(type);
+	GLuint id = GLCall(glCreateShader(type));
 	const GLchar* src = source.c_str();
 	// use our vertex shader source code
-	glShaderSource(id, 1, &src, nullptr);
+	GLCall(glShaderSource(id, 1, &src, nullptr));
 	// compile our vertex shader
-	glCompileShader(id);
+	GLCall(glCompileShader(id));
 
 	GLint result;
 	glGetShaderiv(id, GL_COMPILE_STATUS, &result);
@@ -93,10 +121,10 @@ static GLuint CreateShader(const std::string& vertexShader, const std::string& f
 	GLuint fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
 
 	// Attach our shaders to the program
-	glAttachShader(program, vs);
-	glAttachShader(program, fs);
-	glLinkProgram(program);
-	glValidateProgram(program);
+	GLCall(glAttachShader(program, vs));
+	GLCall(glAttachShader(program, fs));
+	GLCall(glLinkProgram(program));
+	GLCall(glValidateProgram(program));
 
 	GLint result;
 	glGetProgramiv(program, GL_LINK_STATUS, &result);
@@ -141,26 +169,26 @@ int main(void)
 	GLuint vbo;
 
 	// Create memory in the graphics card
-	glGenBuffers(1, &vbo);
+	GLCall(glGenBuffers(1, &vbo));
 	// Makes buffer the current one. Only one at a time.
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	GLCall(glBindBuffer(GL_ARRAY_BUFFER, vbo));
 	// Fill buffer with data from vert_pos. Static Draw: The data store contents will be modified once and used many times.
-	glBufferData(GL_ARRAY_BUFFER, 18 * sizeof(GLfloat), vertices, GL_STATIC_DRAW);
+	GLCall(glBufferData(GL_ARRAY_BUFFER, 18 * sizeof(GLfloat), vertices, GL_STATIC_DRAW));
 
 	// Vertex array object
 	GLuint vao;
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
+	GLCall(glGenVertexArrays(1, &vao));
+	GLCall(glBindVertexArray(vao));
 
 	// INTERVEAVED BUFFER EXAMPLE
 	// position
 	//stride: amount of bytes between each vertex. pointer: amount of bytes between attribute
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GL_FLOAT) * 6, 0);
-	glEnableVertexAttribArray(0);
+	GLCall(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GL_FLOAT) * 6, 0));
+	GLCall(glEnableVertexAttribArray(0));
 
 	// color
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(GL_FLOAT) * 6, (GLvoid*)(sizeof(GLfloat) * 3));
-	glEnableVertexAttribArray(1);
+	GLCall(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(GL_FLOAT) * 6, (GLvoid*)(sizeof(GLfloat) * 3)));
+	GLCall(glEnableVertexAttribArray(1));
 #endif // 0
 
 #pragma endregion 
@@ -327,12 +355,12 @@ int main(void)
 		glClearColor(0.23f, 0.38f, 0.47f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		glUseProgram(shaderProgram);
+		GLCall(glUseProgram(shaderProgram));
 
-		glBindVertexArray(vao);
-		//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
-		glBindVertexArray(0);
+		GLCall(glBindVertexArray(vao));
+		//GLCall(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));
+		GLCall(glDrawArrays(GL_TRIANGLES, 0, 3));
+		GLCall(glBindVertexArray(0));
 
 
 		/* Swap front and back buffers. Front is being displayed, back is currently being drawn */
@@ -429,6 +457,7 @@ void glfw_onKey(GLFWwindow* window, int key, int scancode, int action, int mode)
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		}
 	}
+
 }
 
 void showFPS(GLFWwindow* window)
