@@ -7,18 +7,18 @@
 
 #define ASSERT(x) if (!(x)) __debugbreak();
 #ifdef DEBUG
-	#define GLCall(x) GLClearError();\
+#define GLCall(x) GLClearError();\
 	x;\
 	ASSERT(GLLogCall(#x, __FILE__, __LINE__))
 #else
-	#define GLCall(x) x
+#define GLCall(x) x
 #endif // DEBUG
 
 static void GLClearError()
 {
 	while (!glGetError());
 }
- 
+
 static bool GLLogCall(const char* function, const char* file, int line)
 {
 	while (GLenum error = glGetError())
@@ -104,7 +104,7 @@ static GLuint CompileShader(GLuint type, const std::string& source)
 		std::cerr << "Error! Failed to compile "
 			<< (type == GL_VERTEX_SHADER ? "vertex " : "fragment ")
 			<< "shader." << std::endl;
-			std::cerr << infoLog << std::endl;
+		std::cerr << infoLog << std::endl;
 
 		glDeleteShader(id);
 		return 0;
@@ -160,9 +160,9 @@ int main(void)
 
 	GLfloat vertices[] = {
 		// position			// color
-		0.0f,  0.5f, 0.0f,	1.0f, 0.0f, 0.0f,// Top
-		0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,// Right
-		-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f // Left
+		0.0f,  0.5f, 0.0f,	//1.0f, 0.0f, 0.0f,// Top
+		0.5f, -0.5f, 0.0f,  //0.0f, 1.0f, 0.0f,// Right
+		-0.5f, -0.5f, 0.0f, //0.0f, 0.0f, 1.0f // Left
 	};
 
 	// Vertex buffer object
@@ -183,12 +183,12 @@ int main(void)
 	// INTERVEAVED BUFFER EXAMPLE
 	// position
 	//stride: amount of bytes between each vertex. pointer: amount of bytes between attribute
-	GLCall(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GL_FLOAT) * 6, 0));
+	GLCall(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(GL_FLOAT) * 3, 0));
 	GLCall(glEnableVertexAttribArray(0));
 
 	// color
-	GLCall(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(GL_FLOAT) * 6, (GLvoid*)(sizeof(GLfloat) * 3)));
-	GLCall(glEnableVertexAttribArray(1));
+	//GLCall(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(GL_FLOAT) * 6, (GLvoid*)(sizeof(GLfloat) * 3)));
+	//GLCall(glEnableVertexAttribArray(1));
 #endif // 0
 
 #pragma endregion 
@@ -345,7 +345,13 @@ int main(void)
 
 	ShaderProgramSource source = ParseShader("res/shaders/Basic.shader");
 	GLuint shaderProgram = CreateShader(source.VertextSource, source.FragmentSource);
+	GLCall(glUseProgram(shaderProgram));
 
+	GLCall(int location = glGetUniformLocation(shaderProgram, "u_Color");)
+	ASSERT(location != -1);
+	GLCall(glUniform4f(location, .8f, .3f, .8f, 1.0f));
+
+	
 
 	/* Loop until the user closes the window */
 	while (!glfwWindowShouldClose(gWindow))
@@ -355,13 +361,11 @@ int main(void)
 		glClearColor(0.23f, 0.38f, 0.47f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		GLCall(glUseProgram(shaderProgram));
 
 		GLCall(glBindVertexArray(vao));
 		//GLCall(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));
 		GLCall(glDrawArrays(GL_TRIANGLES, 0, 3));
 		GLCall(glBindVertexArray(0));
-
 
 		/* Swap front and back buffers. Front is being displayed, back is currently being drawn */
 		glfwSwapBuffers(gWindow);
@@ -480,7 +484,7 @@ void showFPS(GLFWwindow* window)
 		std::ostringstream outs;
 		outs.precision(3);
 		outs << std::fixed << APP_TITLE << "   " << "FPS: " << fps
-			<< "Frame Time: " << msPerFrame << " (ms)";
+			<< " Frame Time: " << msPerFrame << " (ms)";
 
 		glfwSetWindowTitle(window, outs.str().c_str());
 
