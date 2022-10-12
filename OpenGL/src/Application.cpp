@@ -5,31 +5,9 @@
 #include <fstream>
 #include <string>
 
-#define ASSERT(x) if (!(x)) __debugbreak();
-#ifdef DEBUG
-#define GLCall(x) GLClearError();\
-	x;\
-	ASSERT(GLLogCall(#x, __FILE__, __LINE__))
-#else
-#define GLCall(x) x
-#endif // DEBUG
-
-static void GLClearError()
-{
-	while (!glGetError());
-}
-
-static bool GLLogCall(const char* function, const char* file, int line)
-{
-	while (GLenum error = glGetError())
-	{
-		std::cout << "[OpenGL Error] (" << error << ")" << function <<
-			" " << file << ":" << line << std::endl;
-		return false;
-	}
-
-	return true;
-}
+#include "Renderer.h"
+#include "VertexBuffer.h"
+#include "IndexBuffer.h"
 
 
 const char* APP_TITLE = "Introduction to Modern OpenGL - Hello Shader";
@@ -166,15 +144,9 @@ int main(void)
 	};
 
 	// Vertex buffer object
-	GLuint vbo;
+	VertexBuffer vb(vertices, 9 * sizeof(GLfloat));
 
-	// Create memory in the graphics card
-	GLCall(glGenBuffers(1, &vbo));
-	// Makes buffer the current one. Only one at a time.
-	GLCall(glBindBuffer(GL_ARRAY_BUFFER, vbo));
-	// Fill buffer with data from vert_pos. Static Draw: The data store contents will be modified once and used many times.
-	GLCall(glBufferData(GL_ARRAY_BUFFER, 18 * sizeof(GLfloat), vertices, GL_STATIC_DRAW));
-
+	
 	// Vertex array object
 	GLuint vao;
 	GLCall(glGenVertexArrays(1, &vao));
@@ -378,7 +350,7 @@ int main(void)
 	// Delete the program before exiting
 	glDeleteProgram(shaderProgram);
 	glDeleteVertexArrays(1, &vao);
-	glDeleteBuffers(1, &vbo);
+	//glDeleteBuffers(1, &vb);
 	//glDeleteBuffers(1, &ebo);
 
 	glfwTerminate();
@@ -393,7 +365,7 @@ bool initOpenGL()
 		return false;
 
 	// Set min OpenGL Version
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	// Force to create modern core profile
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
