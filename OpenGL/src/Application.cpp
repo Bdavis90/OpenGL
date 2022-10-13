@@ -180,38 +180,22 @@ int main(void)
 	};
 
 	// Vertex buffer object
-	GLuint vbo, vbo2;
+	VertexBuffer vbo(vert_pos, 9 * sizeof(GLfloat)), vbo2(vert_color, 9 * sizeof(GLfloat));
 
 	// Vertex array object
 	GLuint vao;
-	// Create memory in the graphics card
-	glGenBuffers(1, &vbo);
-
-	// POSITION
-	// Makes buffer the current one. Only one at a time.
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	// Fill buffer with data from vert_pos. Static Draw: The data store contents will be modified once and used many times.
-	glBufferData(GL_ARRAY_BUFFER, 9 * sizeof(GLfloat), vert_pos, GL_STATIC_DRAW);
-
-	// COLOR
-	// Create memory in the graphics card
-	glGenBuffers(1, &vbo2);
-	// Makes buffer the current one. Only one at a time.
-	glBindBuffer(GL_ARRAY_BUFFER, vbo2);
-	// Fill buffer with data from vert_pos. Static Draw: The data store contents will be modified once and used many times.
-	glBufferData(GL_ARRAY_BUFFER, 9 * sizeof(GLfloat), vert_color, GL_STATIC_DRAW);
 
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
 	// POSITION
 	//stride: amount of bytes between each vertex. pointer: amount of bytes between attribute
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	vbo.Bind();
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(0);
 
 	// COLOR
-	glBindBuffer(GL_ARRAY_BUFFER, vbo2);
+	vbo2.Bind();
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	glEnableVertexAttribArray(1);
 #endif // 0
@@ -232,9 +216,10 @@ int main(void)
 	const GLchar* fragmentShaderSrc =
 		"#version 330 core\n"
 		"out vec4 frag_color;"
+		"uniform vec4 u_Color;"
 		"void main()"
 		"{"
-		"	frag_color = vec4(.35f, .96f, .3f, 1.0f);"
+		"	frag_color = u_Color;"
 		"}";
 
 	GLfloat vertices[] = {
@@ -249,31 +234,32 @@ int main(void)
 	};
 
 	// Vertex buffer object
-	GLuint vbo, ebo;
+	VertexBuffer vbo(vertices, 12 * sizeof(GLfloat));
+	IndexBuffer ib(indices, 6);
 
 	// Vertex array object
 	GLuint vao;
-	// Create memory in the graphics card
-	glGenBuffers(1, &vbo);
-	// Makes buffer the current one. Only one at a time.
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	// Fill buffer with data from vert_pos. Static Draw: The data store contents will be modified once and used many times.
-	glBufferData(GL_ARRAY_BUFFER, 12 * sizeof(GLfloat), vertices, GL_STATIC_DRAW);
 
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-
-	// Create memory in the graphics card
-	glGenBuffers(1, &ebo);
-	// Makes buffer the current one. Only one at a time.
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	// Fill buffer with data from vert_pos. Static Draw: The data store contents will be modified once and used many times.
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(GLuint), indices, GL_STATIC_DRAW);
-
+	GLCall(glGenVertexArrays(1, &vao));
+	GLCall(glBindVertexArray(vao));
 
 	//stride: amount of bytes between each vertex. pointer: amount of bytes between attribute
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(0);
+	GLCall(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0));
+	GLCall(glEnableVertexAttribArray(0));
+
+	GLuint vs = glCreateShader(GL_VERTEX_SHADER);
+	GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+
+	glShaderSource(vs, 1, &vertexShaderSrc, 0);
+	glShaderSource(fs, 1, &fragmentShaderSrc, 0);
+
+	glCompileShader(vs);
+	glCompileShader(fs);
+
+	GLuint shaderProgram = glCreateProgram();
+	glAttachShader(shaderProgram, vs);
+	glAttachShader(shaderProgram, fs);
+	glLinkProgram(shaderProgram);
 
 #endif // 0
 
@@ -281,7 +267,7 @@ int main(void)
 
 #pragma region Side by side Triangle
 #if 0
-	float vertices[] = {
+	GLfloat vertices[] = {
 		// first triangle
 		-0.9f, -0.5f, 0.0f,  // left 
 		-0.0f, -0.5f, 0.0f,  // right
@@ -292,13 +278,13 @@ int main(void)
 		 0.45f, 0.5f, 0.0f   // top 
 	};
 
-	unsigned int vbo, vao;
+	VertexBuffer vbo(vertices, 3 * 3 * 2 * sizeof(GLfloat));
+	GLuint vao;
+
 	glGenVertexArrays(1, &vao);
-	glGenBuffers(1, &vbo);
 	// bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
 	glBindVertexArray(vao);
 
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
@@ -335,6 +321,7 @@ int main(void)
 
 
 		GLCall(glBindVertexArray(vao));
+		//ib.Bind();
 		//GLCall(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));
 		GLCall(glDrawArrays(GL_TRIANGLES, 0, 3));
 		GLCall(glBindVertexArray(0));
@@ -351,7 +338,7 @@ int main(void)
 	glDeleteProgram(shaderProgram);
 	glDeleteVertexArrays(1, &vao);
 	//glDeleteBuffers(1, &vb);
-	//glDeleteBuffers(1, &ebo);
+	//glDeleteBuffers(1, &ib);
 
 	glfwTerminate();
 	return 0;
