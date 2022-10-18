@@ -8,6 +8,7 @@
 #include "Renderer.h"
 #include "VertexBuffer.h"
 #include "IndexBuffer.h"
+#include "VertexArray.h"
 
 
 const char* APP_TITLE = "Introduction to Modern OpenGL - Hello Shader";
@@ -146,12 +147,11 @@ int main(void)
 	// Vertex buffer object
 	VertexBuffer vb(vertices, 9 * sizeof(GLfloat));
 
-	
 	// Vertex array object
-	GLuint vao;
-	GLCall(glGenVertexArrays(1, &vao));
-	GLCall(glBindVertexArray(vao));
-
+	VertexArray va;
+	VertexBufferLayout layout;
+	layout.Push<GLfloat>(3);
+	va.AddBuffer(vb, layout);
 	// INTERVEAVED BUFFER EXAMPLE
 	// position
 	//stride: amount of bytes between each vertex. pointer: amount of bytes between attribute
@@ -320,7 +320,7 @@ int main(void)
 		glClear(GL_COLOR_BUFFER_BIT);
 
 
-		GLCall(glBindVertexArray(vao));
+		va.Bind();
 		//ib.Bind();
 		//GLCall(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));
 		GLCall(glDrawArrays(GL_TRIANGLES, 0, 3));
@@ -336,7 +336,6 @@ int main(void)
 
 	// Delete the program before exiting
 	glDeleteProgram(shaderProgram);
-	glDeleteVertexArrays(1, &vao);
 	//glDeleteBuffers(1, &vb);
 	//glDeleteBuffers(1, &ib);
 

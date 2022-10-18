@@ -2,12 +2,25 @@
 
 #include <vector>
 #include "GL/glew.h"
+#include "Renderer.h"
 
-struct VertexBufferElement 
+struct VertexBufferElement
 {
 	GLuint type;
 	GLuint count;
-	bool normalized;
+	GLchar normalized;
+
+	static GLuint GetSizeOfType(GLuint type)
+	{
+		switch (type)
+		{
+			case GL_FLOAT:			return 4;
+			case GL_UNSIGNED_INT:	return 4;
+			case GL_UNSIGNED_BYTE:	return 1;
+		}
+		ASSERT(false);
+		return 0;
+	}
 };
 
 
@@ -22,30 +35,30 @@ public:
 		: m_Stride(0) {};
 
 	template<typename T>
-	void Push(int count)
+	void Push(GLuint count)
 	{
-		static_assert(false);
+		//static_assert(false);
 	}
 
 	template <>
-	void Push<GLfloat>(GLint count)
+	void Push<GLfloat>(GLuint count)
 	{
-		m_Elements.push_back(VertexBufferElement{ GL_FLOAT, (GLuint)count, false });
-		m_Stride += sizeof(GLfloat);
+		m_Elements.push_back(VertexBufferElement{ GL_FLOAT, count, GL_FALSE });
+		m_Stride += VertexBufferElement::GetSizeOfType(GL_FLOAT) * count;
 	};
 
 	template <>
-	void Push<GLuint>(GLint count)
+	void Push<GLuint>(GLuint count)
 	{
-		m_Elements.push_back(VertexBufferElement{ GL_UNSIGNED_INT, (GLuint)count, false });
-		m_Stride += sizeof(GLuint);
+		m_Elements.push_back(VertexBufferElement{ GL_UNSIGNED_INT, count, GL_FALSE });
+		m_Stride += VertexBufferElement::GetSizeOfType(GL_UNSIGNED_INT) * count;
 	};
 
 	template <>
-	void Push<GLchar>(GLint count)
+	void Push<GLchar>(GLuint count)
 	{
-		m_Elements.push_back(VertexBufferElement{ GL_UNSIGNED_BYTE, (GLuint)count, true });
-		m_Stride += sizeof(GLbyte);
+		m_Elements.push_back(VertexBufferElement{ GL_UNSIGNED_BYTE, count, GL_TRUE });
+		m_Stride += VertexBufferElement::GetSizeOfType(GL_BYTE) * count;
 	};
 
 	inline const std::vector<VertexBufferElement>& GetElements() const { return m_Elements; };
